@@ -1,16 +1,21 @@
 import openai
 import os
-
+from django.db.models import Q
 from django.contrib.auth.hashers import make_password
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
-from .models import Food
-# 환경 변수에서 OpenAI API 키 불러오기
-openai.api_key = os.getenv("OPENAI_API_KEY")
+from .models import Food, Review
+from .serializers import ReviewSerializer
+
+# 환경 변수에서 OpenAI API 키 불러오기 (일단 삭제)
+# openai.api_key = os.getenv("OPENAI_API_KEY")
+
+TASTE_KEYWORDS = ["구수한", "진한", "달콤한", "담백한", "매운", "단맛", "매콤한"]
 
 
 class ChatbotAPIView(APIView):
@@ -27,55 +32,27 @@ class ChatbotAPIView(APIView):
             return Response({"error": "메시지를 입력하세요."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            # user_message에서 맛 키워드를 추출
+            matched_keywords = [taste for taste in TASTE_KEYWORDS if taste in user_message]
 
-            matched_foods = Food.objects.filter(
-                name__icontains=user_message
-            ) | Food.objects.filter(
-                taste__icontains=user_message
-            ) | Food.objects.filter(
-                location__icontains=user_message
-            ) | Food.objects.filter(
-                price__icontains=user_message  # 💡 설명까지 체크해도 좋음
-            )
+            if matched_keywords:
+                matched_foods = Food.objects.filter(taste__in=matched_keywords)
+            else:
+                matched_foods = Food.objects.none()
 
             if matched_foods.exists():
-                best_food = matched_foods.first()  # 첫 번째 추천 음식
-                food_info = f"{best_food.name} (맛: {best_food.taste}, 위치: {best_food.location}, 가격: {best_food.price}원)"
-
-                messages = [
-                    {
-                        "role": "system",
-                        "content": "당신은 음식 추천 챗봇입니다. 아래 음식 정보를 기반으로 사용자에게 추천 설명을 해주세요."
-                    },
-                    {
-                        "role": "user",
-                        "content": f"추천 음식: {food_info}"
-                    }
+                # 추천 결과 리스트 형태로 응답
+                food_info = [
+                    f"{food.name} (맛: {food.taste}, 위치: {food.location}, 가격: {food.price}원)"
+                    for food in matched_foods
                 ]
+                return Response({"response": food_info}, status=status.HTTP_200_OK)
             else:
-                messages = [
-                    {
-                        "role": "system",
-                        "content": "음식 데이터가 없기 때문에, 일반적인 음식 하나를 추천해주세요."
-                    },
-                    {
-                        "role": "user",
-                        "content": f"{user_message}"
-                    }
-                ]
-            client = openai.OpenAI()
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",  # ✅ GPT-3.5 사용
-                messages=messages,
-                temperature=0.0
-            )
-            bot_response = response.choices[0].message.content  # ✅ 응답 형식
-
-            return Response({"response": bot_response}, status=status.HTTP_200_OK)
+                return Response({"response": "조건에 맞는 음식이 없습니다. 다른 키워드로 다시 시도해주세요!"},
+                                status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class RegisterAPIView(APIView):
     permission_classes = [AllowAny]  # 누구나 접근 가능
@@ -112,10 +89,24 @@ class LogoutAPIView(APIView):
                     return Response({"error": "리프레시 토큰이 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
 
                 token = RefreshToken(refresh_token)
-                token.blacklist()  # ✅ 토큰 블랙리스트에 추가 (무효화)
+                token.blacklist()  # 토큰 블랙리스트에 추가 (무효화)
 
                 return Response({"message": "로그아웃되었습니다."}, status=status.HTTP_205_RESET_CONTENT)
 
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+class ReviewCreateAPIView(APIView):
+    def post(self, request):
+        serializer = ReviewSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "리뷰가 등록되었습니다.", "review": serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ReviewListByFoodAPIView(ListAPIView):
+    serializer_class = ReviewSerializer
+
+    def get_queryset(self):
+        food_id = self.kwargs['food_id']
+        return Review.objects.filter(food_id=food_id).order_by('-created_at')

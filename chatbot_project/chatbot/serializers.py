@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ChatMessage, Review
+from .models import ChatMessage ## Review, Food
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):
@@ -8,7 +8,12 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class ReviewSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Review
-        fields = ['id', 'food', 'content', 'rating', 'created_at']
+# class ReviewSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Review
+#         fields = ['id', 'food', 'content', 'rating', 'created_at']
+#
+# class FoodSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Food
+#         fields = ['id', 'name']

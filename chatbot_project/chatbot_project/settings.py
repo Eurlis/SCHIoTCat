@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+#OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,8 +30,9 @@ SECRET_KEY = 'django-insecure-)8p*zpzlk1y^*znp86cq72f()2jtb^m-@ih_ut^02y!jdnum!z
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
+AUTH_USER_MODEL = 'users.CustomUser'
 
 # Application definition
 
@@ -44,8 +45,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-    'chatbot',
     'rest_framework_simplejwt.token_blacklist',
+    'users',
+    'chatbot',
 ]
 
 MIDDLEWARE = [
@@ -148,6 +150,21 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),  # 액세스 토큰 유효 시간
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # 리프레시 토큰 유효 시간
-    'BLACKLIST_AFTER_ROTATION': True,  # ✅ 리프레시 토큰을 한 번 사용하면 무효화
+    'BLACKLIST_AFTER_ROTATION': True,  # 리프레시 토큰을 한 번 사용하면 무효화
     'ROTATE_REFRESH_TOKENS': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+# 1. 세션 엔진을 쿠키 기반으로 설정
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+
+# 2. Flutter 앱에서 세션 쿠키를 공유하려면 다음 설정이 필수
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True  # HTTPS 환경에서만 동작 (개발 환경에서는 False로 해도 됨)
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",  # 또는 Redis를 사용 가능
+        "LOCATION": "unique-chatbot-cache"
+    }
 }

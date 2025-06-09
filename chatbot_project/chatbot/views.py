@@ -17,6 +17,7 @@ from rest_framework.response import Response
 
 from django.core.cache import cache
 
+
 load_dotenv()
 
 # (기존 SQL 프롬프트 – 음식점 일반 추천용)

@@ -37,7 +37,7 @@ class LogoutAPIView(APIView):
         except TokenError:
             return Response({"error": "이미 만료된 토큰입니다."}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({"error": "로그아웃 실패", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "로그아웃 실패", "details": str(e)}, status=status.HTTP_400_BAD_REQUESeT)
 
 class UserInfoAPIView(APIView):
     permission_classes = [IsAuthenticated]  # 토큰 필수

@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
 
-from .serializers import CustomUserSerializer
+from .serializers import CustomUserSerializer, LocationSerializer
 from .serializers import LoginSerializer
 
 
@@ -49,3 +49,37 @@ class UserInfoAPIView(APIView):
             "email": user.email,
             "birth_date": user.birth_date
         })
+
+class UpdateLocationAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        # 1) Serializer를 사용해 요청 데이터 검증
+        serializer = LocationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {"error": "latitude와 longitude를 float 형태로 보내주세요.", "details": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 2) 검증된 데이터에서 위도, 경도 꺼내기
+        latitude = serializer.validated_data['latitude']
+        longitude = serializer.validated_data['longitude']
+
+        try:
+            # 3) 사용자 모델 필드 업데이트
+            user.latitude = latitude
+            user.longitude = longitude
+            user.save(update_fields=['latitude', 'longitude'])
+
+            return Response(
+                {"status": "위치 정보가 업데이트되었습니다."},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"저장 중 오류가 발생했습니다: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

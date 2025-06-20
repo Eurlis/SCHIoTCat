@@ -154,7 +154,7 @@ class LangChainChatAPIView(APIView):
         j = res.json()[0]
         return j["lat"], j["lon"]
 
-    # ───────────── 헬퍼: 날씨 조회 ─────────────
+
     def _fetch_weather(self, lat, lon):
         api_key = os.getenv("OPENWEATHER_API_KEY")
         res = requests.get(
